@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>⚡ Pocket Option Ultimate Trading Bot</title>
+  <title>⚡ Pocket Option Signal Bot Pro</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     :root {
@@ -26,11 +26,11 @@
     
     .card { background: var(--card-bg); width: 100%; max-width: 400px; border-radius: 16px; padding: 16px; margin-bottom: 12px; border: 1px solid #334155; }
     label { font-size: 11px; color: var(--subtext); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px; }
-    select, button { width: 100%; padding: 12px; border-radius: 10px; border: none; background: #0f172a; color: var(--text); font-size: 14px; outline: none; border: 1px solid #334155; }
-    select { margin-bottom: 10px; }
+    select, input, button { width: 100%; padding: 12px; border-radius: 10px; border: none; background: #0f172a; color: var(--text); font-size: 14px; outline: none; border: 1px solid #334155; }
+    select, input { margin-bottom: 10px; }
     
-    .btn-main { background: linear-gradient(135deg, #0284c7, #38bdf8); color: #fff; font-weight: 700; font-size: 14px; cursor: pointer; border: none; margin-top: 4px; }
-    .btn-scan { background: linear-gradient(135deg, #10b981, #22c55e); color: #fff; font-weight: 700; font-size: 14px; cursor: pointer; border: none; margin-top: 4px; }
+    .btn-main { background: linear-gradient(135deg, #0284c7, #38bdf8); color: #fff; font-weight: 700; font-size: 14px; cursor: pointer; border: none; margin-top: 4px; box-shadow: 0 4px 14px rgba(56, 189, 248, 0.25); }
+    .btn-scan { background: linear-gradient(135deg, #10b981, #22c55e); color: #fff; font-weight: 700; font-size: 14px; cursor: pointer; border: none; margin-top: 4px; box-shadow: 0 4px 14px rgba(34, 197, 94, 0.25); }
     
     .result-box { display: none; text-align: center; padding: 16px 8px; }
     .pair-badge { font-size: 18px; font-weight: 800; color: var(--accent); margin-bottom: 6px; display: inline-block; background: #0f172a; padding: 6px 14px; border-radius: 8px; border: 1px solid #334155; }
@@ -58,13 +58,43 @@
 
   <div class="card">
     <div id="singlePairBlock">
-      <label>Выберите открытую пару на Pocket Option</label>
+      <label>Выбор активной котировки</label>
       <select id="pairSelect">
-        <option value="EURUSD_OTC">EUR / USD (OTC) [92%]</option>
-        <option value="GBPUSD_OTC">GBP / USD (OTC) [92%]</option>
-        <option value="USDJPY_OTC">USD / JPY (OTC) [92%]</option>
-        <option value="BTCUSD_OTC">Bitcoin OTC [92%]</option>
-        <option value="GOLD_OTC">Gold OTC [92%]</option>
+        <!-- Валютные OTC пары -->
+        <optgroup label="💱 Валютные OTC пары (92%)">
+          <option value="EURUSD_OTC" selected>EUR / USD (OTC) [92%]</option>
+          <option value="GBPUSD_OTC">GBP / USD (OTC) [92%]</option>
+          <option value="USDJPY_OTC">USD / JPY (OTC) [92%]</option>
+          <option value="AUDUSD_OTC">AUD / USD (OTC) [92%]</option>
+          <option value="USDCAD_OTC">USD / CAD (OTC) [92%]</option>
+          <option value="USDCHF_OTC">USD / CHF (OTC) [92%]</option>
+          <option value="EURGBP_OTC">EUR / GBP (OTC) [92%]</option>
+          <option value="EURJPY_OTC">EUR / JPY (OTC) [92%]</option>
+          <option value="AUDCAD_OTC">AUD / CAD (OTC) [92%]</option>
+          <option value="NZDUSD_OTC">NZD / USD (OTC) [92%]</option>
+        </optgroup>
+        
+        <!-- Криптовалюта OTC -->
+        <optgroup label="₿ Криптовалюта OTC (92%)">
+          <option value="BTCUSD_OTC">Bitcoin OTC [92%]</option>
+          <option value="ETHUSD_OTC">Ethereum OTC [92%]</option>
+          <option value="LTCUSD_OTC">Litecoin OTC [92%]</option>
+        </optgroup>
+
+        <!-- Сырьё и Металлы OTC -->
+        <optgroup label="🥇 Металлы и Сырьё OTC">
+          <option value="GOLD_OTC">Gold OTC (Золото) [92%]</option>
+          <option value="SILVER_OTC">Silver OTC (Серебро) [92%]</option>
+          <option value="BRENT_OTC">UKBRENT OTC (Нефть) [92%]</option>
+        </optgroup>
+
+        <!-- Акции OTC -->
+        <optgroup label="📊 Акции OTC (92%)">
+          <option value="AAPL_OTC">Apple OTC [92%]</option>
+          <option value="TSLA_OTC">Tesla OTC [92%]</option>
+          <option value="AMZN_OTC">Amazon OTC [92%]</option>
+          <option value="MSFT_OTC">Microsoft OTC [92%]</option>
+        </optgroup>
       </select>
     </div>
 
@@ -110,8 +140,23 @@
       { id: 'EURUSD_OTC', name: 'EUR / USD (OTC)', base: 1.0850 },
       { id: 'GBPUSD_OTC', name: 'GBP / USD (OTC)', base: 1.2650 },
       { id: 'USDJPY_OTC', name: 'USD / JPY (OTC)', base: 155.20 },
+      { id: 'AUDUSD_OTC', name: 'AUD / USD (OTC)', base: 0.6650 },
+      { id: 'USDCAD_OTC', name: 'USD / CAD (OTC)', base: 1.3680 },
+      { id: 'USDCHF_OTC', name: 'USD / CHF (OTC)', base: 0.8950 },
+      { id: 'EURGBP_OTC', name: 'EUR / GBP (OTC)', base: 0.8580 },
+      { id: 'EURJPY_OTC', name: 'EUR / JPY (OTC)', base: 168.40 },
+      { id: 'AUDCAD_OTC', name: 'AUD / CAD (OTC)', base: 0.9120 },
+      { id: 'NZDUSD_OTC', name: 'NZD / USD (OTC)', base: 0.6150 },
       { id: 'BTCUSD_OTC', name: 'Bitcoin OTC', base: 64200.0 },
-      { id: 'GOLD_OTC',   name: 'Gold OTC', base: 2380.50 }
+      { id: 'ETHUSD_OTC', name: 'Ethereum OTC', base: 3450.0 },
+      { id: 'LTCUSD_OTC', name: 'Litecoin OTC', base: 74.5 },
+      { id: 'GOLD_OTC',   name: 'Gold OTC', base: 2380.50 },
+      { id: 'SILVER_OTC', name: 'Silver OTC', base: 28.40 },
+      { id: 'BRENT_OTC',  name: 'UKBRENT OTC', base: 82.30 },
+      { id: 'AAPL_OTC',   name: 'Apple OTC', base: 224.30 },
+      { id: 'TSLA_OTC',   name: 'Tesla OTC', base: 251.50 },
+      { id: 'AMZN_OTC',   name: 'Amazon OTC', base: 185.40 },
+      { id: 'MSFT_OTC',   name: 'Microsoft OTC', base: 445.20 }
     ];
 
     function switchMode(mode) {
@@ -198,7 +243,7 @@
           renderResult(selectedPairObj.name, isCall, score, tf);
         }, 500);
       } else {
-        scanStatus.innerText = "Сканирование всех 92% пар...";
+        scanStatus.innerText = "Сканирование всех 20+ OTC-активов...";
         setTimeout(() => {
           let ratedPairs = pairsPool.map(pair => {
             const history = generateSimulatedHistory(pair.base);
