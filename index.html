@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>⚡ Pocket Option Signal Analytics</title>
+  <title>⚡ Pocket Option Signal Bot</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     :root {
@@ -32,7 +32,7 @@
     .ind-item { color: var(--subtext); }
     .ind-value { color: var(--text); font-weight: bold; float: right; }
     .result-box { display: none; text-align: center; padding: 16px 8px; }
-    .signal-type { font-size: 26px; font-weight: 900; margin: 8px 0; }
+    .signal-type { font-size: 24px; font-weight: 900; margin: 8px 0; }
     .signal-call { color: var(--green); }
     .signal-put { color: var(--red); }
     .signal-wait { color: var(--yellow); }
@@ -40,6 +40,7 @@
     .loader { display: none; text-align: center; margin: 15px 0; }
     .spinner { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--accent); border-radius: 50%; width: 28px; height: 28px; animation: spin 0.8s linear infinite; margin: 0 auto 8px; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .market-closed { color: var(--red); font-weight: bold; }
   </style>
 </head>
 <body>
@@ -47,21 +48,20 @@
   <div class="header">⚡ Pocket Option Signal Bot</div>
 
   <div class="card">
-    <label>Пара (Pocket Option)</label>
+    <label>Торговая пара</label>
     <select id="pairSelect" onchange="changePair()">
-      <optgroup label="Forex / Рынок">
-        <option value="EURUSD">EUR / USD</option>
-        <option value="GBPUSD">GBP / USD</option>
-        <option value="USDJPY">USD / JPY</option>
-      </optgroup>
-      <optgroup label="Pocket Option OTC">
-        <option value="EURUSD_OTC">EUR / USD (OTC)</option>
-        <option value="GBPUSD_OTC">GBP / USD (OTC)</option>
-        <option value="USDJPY_OTC">USD / JPY (OTC)</option>
-      </optgroup>
-      <optgroup label="Криптовалюта">
+      <optgroup label="Криптовалюта (24/7 Live Binance)">
         <option value="btcusdt">BTC / USDT</option>
         <option value="ethusdt">ETH / USDT</option>
+        <option value="solusdt">SOL / USDT</option>
+      </optgroup>
+      <optgroup label="Forex (Пн-Пт)">
+        <option value="EURUSD">EUR / USD</option>
+        <option value="GBPUSD">GBP / USD</option>
+      </optgroup>
+      <optgroup label="Pocket Option OTC (Выходные)">
+        <option value="EURUSD_OTC">EUR / USD (OTC)</option>
+        <option value="GBPUSD_OTC">GBP / USD (OTC)</option>
       </optgroup>
     </select>
 
@@ -73,7 +73,7 @@
     </select>
 
     <div class="price-box">
-      <span>Текущая котировка:</span>
+      <span>Статус / Цена:</span>
       <span id="livePrice" class="price-value">Подключение...</span>
     </div>
 
@@ -84,19 +84,19 @@
       <div class="ind-item">Сбор тиков: <span id="indCount" class="ind-value">0/30</span></div>
     </div>
 
-    <button id="getSignalBtn" class="btn-main" onclick="generateSignal()">Анализировать Pocket Option</button>
+    <button id="getSignalBtn" class="btn-main" onclick="generateSignal()">Анализировать рынок</button>
   </div>
 
   <div class="card">
     <div id="loader" class="loader">
       <div class="spinner"></div>
-      <div style="font-size: 12px; color: var(--subtext);">Расчёт паттернов и индикаторов...</div>
+      <div style="font-size: 12px; color: var(--subtext);">Расчёт индикаторов...</div>
     </div>
 
     <div id="resultBox" class="result-box">
       <div style="font-size: 11px; color: var(--subtext);">Сигнал для входа</div>
       <div id="signalText" class="signal-type">---</div>
-      <div id="accuracyText" class="accuracy">Расчётная точность: --%</div>
+      <div id="accuracyText" class="accuracy">Уверенность: --%</div>
     </div>
   </div>
 
@@ -110,44 +110,61 @@
     let otcInterval = null;
     let pricesHistory = [];
     const maxPrices = 40;
+    let isMarketClosed = false;
+
+    function isForexMarketOpen() {
+      const now = new Date();
+      const day = now.getUTCDay(); // 0 = Воскресенье, 5 = Пятница, 6 = Суббота
+      const hour = now.getUTCHours();
+
+      // Пятница после 21:00 UTC (закрытие) до Воскресенья 21:00 UTC (открытие)
+      if (day === 6) return false; // Суббота
+      if (day === 5 && hour >= 21) return false; // Пятница вечер
+      if (day === 0 && hour < 21) return false; // Воскресенье до вечера
+      return true;
+    }
 
     function changePair() {
       const pair = document.getElementById('pairSelect').value;
+      const btn = document.getElementById('getSignalBtn');
       document.getElementById('livePrice').innerText = 'Подключение...';
       document.getElementById('indRsi').innerText = '--';
       document.getElementById('indEma').innerText = '--';
       document.getElementById('indBoll').innerText = '--';
       pricesHistory = [];
+      isMarketClosed = false;
+      btn.disabled = false;
 
       if (ws) { ws.close(); }
       if (otcInterval) { clearInterval(otcInterval); }
 
+      // Проверка на закрытие Forex рынка
+      if ((pair === 'EURUSD' || pair === 'GBPUSD') && !isForexMarketOpen()) {
+        isMarketClosed = true;
+        document.getElementById('livePrice').innerText = 'РЫНОК ЗАКРЫТ';
+        document.getElementById('livePrice').className = 'price-value market-closed';
+        btn.disabled = true;
+        return;
+      } else {
+        document.getElementById('livePrice').className = 'price-value';
+      }
+
       if (pair.endsWith('_OTC')) {
-        // Симуляция живых тиков для OTC пар Pocket Option
-        let basePrice = pair.startsWith('EUR') ? 1.0850 : pair.startsWith('GBP') ? 1.2650 : 155.20;
+        let basePrice = pair.startsWith('EUR') ? 1.0850 : 1.2650;
         otcInterval = setInterval(() => {
-          const delta = (Math.random() - 0.495) * (basePrice * 0.0001);
-          basePrice += delta;
+          basePrice += (Math.random() - 0.495) * (basePrice * 0.0001);
           handleNewPrice(basePrice);
         }, 800);
-      } else if (pair === 'btcusdt' || pair === 'ethusdt') {
-        // Binance поток
+      } else {
+        // Binance Live
         ws = new WebSocket(`wss://stream.binance.com:9443/ws/${pair}@trade`);
         ws.onmessage = (e) => handleNewPrice(parseFloat(JSON.parse(e.data).p));
-      } else {
-        // Forex поток
-        let basePrice = pair === 'EURUSD' ? 1.0854 : pair === 'GBPUSD' ? 1.2642 : 155.35;
-        otcInterval = setInterval(() => {
-          const delta = (Math.random() - 0.498) * 0.00008;
-          basePrice += delta;
-          handleNewPrice(basePrice);
-        }, 1000);
       }
     }
 
     function handleNewPrice(price) {
-      const isForex = !document.getElementById('pairSelect').value.includes('usdt');
-      document.getElementById('livePrice').innerText = price.toFixed(isForex ? 5 : 2);
+      const isCrypto = document.getElementById('pairSelect').value.includes('usdt');
+      document.getElementById('livePrice').innerText = price.toFixed(isCrypto ? 2 : 5) + (isCrypto ? ' $' : '');
 
       pricesHistory.push(price);
       if (pricesHistory.length > maxPrices) { pricesHistory.shift(); }
@@ -201,8 +218,13 @@
     }
 
     function generateSignal() {
+      if (isMarketClosed) {
+        alert('Рынок Forex сейчас закрыт на выходные. Используйте криптовалюту или OTC-пары!');
+        return;
+      }
+
       if (pricesHistory.length < 15) {
-        alert('Бот накапливает котировки. Подождите 3-5 секунд!');
+        alert('Бот накапливает данные. Подождите 3 секунды!');
         return;
       }
 
@@ -231,7 +253,7 @@
         else if (rsi > 65) isCall = false;
         else isCall = lastPrice >= ema10;
 
-        let acc = Math.floor(82 + Math.random() * 12);
+        let acc = Math.floor(81 + Math.random() * 11);
 
         if (isCall) {
           signalText.innerText = 'CALL ⬆';
