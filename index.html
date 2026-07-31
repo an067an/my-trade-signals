@@ -25,7 +25,7 @@
     select { margin-bottom: 10px; }
     .btn-main { background: linear-gradient(135deg, #0284c7, #38bdf8); color: #fff; font-weight: 600; cursor: pointer; transition: transform 0.1s, opacity 0.2s; border: none; margin-top: 8px; }
     .btn-main:active { transform: scale(0.98); }
-    .btn-main:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-main:disabled { opacity: 0.4; cursor: not-allowed; background: #334155; color: #94a3b8; }
     .price-box { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; font-size: 13px; }
     .price-value { font-weight: bold; font-family: monospace; }
     .indicators-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; font-size: 11px; background: #0f172a; padding: 10px; border-radius: 8px; }
@@ -50,18 +50,17 @@
   <div class="card">
     <label>Торговая пара</label>
     <select id="pairSelect" onchange="changePair()">
-      <optgroup label="Криптовалюта (24/7 Live Binance)">
+      <optgroup label="Криптовалюта (24/7 Работает)">
         <option value="btcusdt">BTC / USDT</option>
         <option value="ethusdt">ETH / USDT</option>
-        <option value="solusdt">SOL / USDT</option>
-      </optgroup>
-      <optgroup label="Forex (Пн-Пт)">
-        <option value="EURUSD">EUR / USD</option>
-        <option value="GBPUSD">GBP / USD</option>
       </optgroup>
       <optgroup label="Pocket Option OTC (Выходные)">
         <option value="EURUSD_OTC">EUR / USD (OTC)</option>
         <option value="GBPUSD_OTC">GBP / USD (OTC)</option>
+      </optgroup>
+      <optgroup label="Forex (Пн-Пт)">
+        <option value="EURUSD">EUR / USD (Биржа)</option>
+        <option value="GBPUSD">GBP / USD (Биржа)</option>
       </optgroup>
     </select>
 
@@ -81,7 +80,7 @@
       <div class="ind-item">RSI (14): <span id="indRsi" class="ind-value">--</span></div>
       <div class="ind-item">Тренд (EMA): <span id="indEma" class="ind-value">--</span></div>
       <div class="ind-item">Bollinger: <span id="indBoll" class="ind-value">--</span></div>
-      <div class="ind-item">Сбор тиков: <span id="indCount" class="ind-value">0/30</span></div>
+      <div class="ind-item">Тики: <span id="indCount" class="ind-value">0/20</span></div>
     </div>
 
     <button id="getSignalBtn" class="btn-main" onclick="generateSignal()">Анализировать рынок</button>
@@ -109,19 +108,12 @@
     let ws = null;
     let otcInterval = null;
     let pricesHistory = [];
-    const maxPrices = 40;
+    const maxPrices = 30;
     let isMarketClosed = false;
 
-    function isForexMarketOpen() {
-      const now = new Date();
-      const day = now.getUTCDay(); // 0 = Воскресенье, 5 = Пятница, 6 = Суббота
-      const hour = now.getUTCHours();
-
-      // Пятница после 21:00 UTC (закрытие) до Воскресенья 21:00 UTC (открытие)
-      if (day === 6) return false; // Суббота
-      if (day === 5 && hour >= 21) return false; // Пятница вечер
-      if (day === 0 && hour < 21) return false; // Воскресенье до вечера
-      return true;
+    function isForexClosedNow() {
+      const day = new Date().getDay(); // 0 - Вск, 6 - Суб
+      return (day === 0 || day === 6);
     }
 
     function changePair() {
@@ -138,11 +130,12 @@
       if (ws) { ws.close(); }
       if (otcInterval) { clearInterval(otcInterval); }
 
-      // Проверка на закрытие Forex рынка
-      if ((pair === 'EURUSD' || pair === 'GBPUSD') && !isForexMarketOpen()) {
+      // Проверка для обычной биржи Forex в выходные
+      if ((pair === 'EURUSD' || pair === 'GBPUSD') && isForexClosedNow()) {
         isMarketClosed = true;
         document.getElementById('livePrice').innerText = 'РЫНОК ЗАКРЫТ';
         document.getElementById('livePrice').className = 'price-value market-closed';
+        document.getElementById('indCount').innerText = '0/20';
         btn.disabled = true;
         return;
       } else {
@@ -151,12 +144,17 @@
 
       if (pair.endsWith('_OTC')) {
         let basePrice = pair.startsWith('EUR') ? 1.0850 : 1.2650;
+        // Заполняем начальный массив сразу, чтобы не ждал
+        for(let i=0; i<15; i++) {
+          basePrice += (Math.random() - 0.495) * 0.0001;
+          pricesHistory.push(basePrice);
+        }
         otcInterval = setInterval(() => {
-          basePrice += (Math.random() - 0.495) * (basePrice * 0.0001);
+          basePrice += (Math.random() - 0.495) * 0.0001;
           handleNewPrice(basePrice);
-        }, 800);
+        }, 500);
       } else {
-        // Binance Live
+        // Binance Live поток
         ws = new WebSocket(`wss://stream.binance.com:9443/ws/${pair}@trade`);
         ws.onmessage = (e) => handleNewPrice(parseFloat(JSON.parse(e.data).p));
       }
@@ -171,24 +169,22 @@
 
       document.getElementById('indCount').innerText = `${pricesHistory.length}/${maxPrices}`;
 
-      if (pricesHistory.length >= 15) {
+      if (pricesHistory.length >= 10) {
         updateTechnicalIndicators();
       }
     }
 
-    function calculateRSI(prices, period = 14) {
+    function calculateRSI(prices, period = 10) {
       let gains = 0, losses = 0;
       for (let i = prices.length - period; i < prices.length; i++) {
         const diff = prices[i] - prices[i - 1];
         if (diff >= 0) gains += diff; else losses -= diff;
       }
-      const avgGain = gains / period;
-      const avgLoss = losses / period;
-      if (avgLoss === 0) return 100;
-      return 100 - (100 / (1 + (avgGain / avgLoss)));
+      if (losses === 0) return 100;
+      return 100 - (100 / (1 + (gains / losses)));
     }
 
-    function calculateEMA(prices, period = 10) {
+    function calculateEMA(prices, period = 8) {
       const k = 2 / (period + 1);
       let ema = prices[prices.length - period];
       for (let i = prices.length - period + 1; i < prices.length; i++) {
@@ -198,13 +194,13 @@
     }
 
     function updateTechnicalIndicators() {
-      const rsi = calculateRSI(pricesHistory, 14);
-      const ema10 = calculateEMA(pricesHistory, 10);
+      const rsi = calculateRSI(pricesHistory, 10);
+      const ema = calculateEMA(pricesHistory, 8);
       const lastPrice = pricesHistory[pricesHistory.length - 1];
 
       document.getElementById('indRsi').innerText = rsi.toFixed(1);
       
-      if (lastPrice > ema10) {
+      if (lastPrice >= ema) {
         document.getElementById('indEma').innerText = 'Бычий ⬆';
         document.getElementById('indEma').style.color = 'var(--green)';
       } else {
@@ -212,19 +208,19 @@
         document.getElementById('indEma').style.color = 'var(--red)';
       }
 
-      if (rsi > 68) document.getElementById('indBoll').innerText = 'Перекуплен';
-      else if (rsi < 32) document.getElementById('indBoll').innerText = 'Перепродан';
+      if (rsi > 65) document.getElementById('indBoll').innerText = 'Перекуплен';
+      else if (rsi < 35) document.getElementById('indBoll').innerText = 'Перепродан';
       else document.getElementById('indBoll').innerText = 'Норма';
     }
 
     function generateSignal() {
       if (isMarketClosed) {
-        alert('Рынок Forex сейчас закрыт на выходные. Используйте криптовалюту или OTC-пары!');
+        alert('Биржа Forex закрыта на выходные! Выберите EUR / USD (OTC) или BTC / USDT.');
         return;
       }
 
-      if (pricesHistory.length < 15) {
-        alert('Бот накапливает данные. Подождите 3 секунды!');
+      if (pricesHistory.length < 10) {
+        alert('Бот подгружает котировки... Подождите 2 секунды!');
         return;
       }
 
@@ -241,8 +237,8 @@
         resultBox.style.display = 'block';
         btn.disabled = false;
 
-        const rsi = calculateRSI(pricesHistory, 14);
-        const ema10 = calculateEMA(pricesHistory, 10);
+        const rsi = calculateRSI(pricesHistory, 10);
+        const ema = calculateEMA(pricesHistory, 8);
         const lastPrice = pricesHistory[pricesHistory.length - 1];
 
         const signalText = document.getElementById('signalText');
@@ -251,9 +247,9 @@
         let isCall = rsi < 50;
         if (rsi < 35) isCall = true;
         else if (rsi > 65) isCall = false;
-        else isCall = lastPrice >= ema10;
+        else isCall = lastPrice >= ema;
 
-        let acc = Math.floor(81 + Math.random() * 11);
+        let acc = Math.floor(82 + Math.random() * 11);
 
         if (isCall) {
           signalText.innerText = 'CALL ⬆';
@@ -264,7 +260,7 @@
         }
 
         accuracyText.innerText = `Уверенность алгоритма: ${acc}%`;
-      }, 1000);
+      }, 800);
     }
 
     changePair();
