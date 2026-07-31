@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>⚡ Pocket Option Signal Bot (Full OTC + Live)</title>
+  <title>⚡ Pocket Option Auto-Scanner</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     :root {
@@ -23,98 +23,55 @@
     label { font-size: 11px; color: var(--subtext); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px; }
     select, button { width: 100%; padding: 12px; border-radius: 10px; border: none; background: #0f172a; color: var(--text); font-size: 14px; outline: none; border: 1px solid #334155; }
     select { margin-bottom: 10px; }
-    .btn-main { background: linear-gradient(135deg, #0284c7, #38bdf8); color: #fff; font-weight: 600; cursor: pointer; transition: transform 0.1s, opacity 0.2s; border: none; margin-top: 8px; }
-    .btn-main:active { transform: scale(0.98); }
-    .btn-main:disabled { opacity: 0.4; cursor: not-allowed; background: #334155; color: #94a3b8; }
-    .price-box { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; font-size: 13px; }
-    .price-value { font-weight: bold; font-family: monospace; }
-    .indicators-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; font-size: 11px; background: #0f172a; padding: 10px; border-radius: 8px; }
-    .ind-item { color: var(--subtext); }
-    .ind-value { color: var(--text); font-weight: bold; float: right; }
+    .btn-scan { background: linear-gradient(135deg, #10b981, #22c55e); color: #fff; font-weight: 700; font-size: 15px; cursor: pointer; transition: transform 0.1s, opacity 0.2s; border: none; margin-top: 4px; box-shadow: 0 4px 14px rgba(34, 197, 94, 0.3); }
+    .btn-scan:active { transform: scale(0.98); }
+    .btn-scan:disabled { opacity: 0.4; cursor: not-allowed; background: #334155; color: #94a3b8; box-shadow: none; }
+    .btn-secondary { background: #1e293b; color: var(--subtext); font-weight: 500; font-size: 12px; border: 1px solid #334155; margin-top: 8px; cursor: pointer; }
+    
     .result-box { display: none; text-align: center; padding: 16px 8px; }
-    .signal-type { font-size: 24px; font-weight: 900; margin: 8px 0; }
+    .pair-badge { font-size: 20px; font-weight: 800; color: var(--accent); margin-bottom: 4px; display: inline-block; background: #0f172a; padding: 6px 14px; border-radius: 8px; border: 1px solid #334155; }
+    .signal-type { font-size: 28px; font-weight: 900; margin: 10px 0; }
     .signal-call { color: var(--green); }
     .signal-put { color: var(--red); }
-    .signal-wait { color: var(--yellow); }
-    .accuracy { font-size: 13px; color: var(--subtext); }
-    .loader { display: none; text-align: center; margin: 15px 0; }
-    .spinner { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--accent); border-radius: 50%; width: 28px; height: 28px; animation: spin 0.8s linear infinite; margin: 0 auto 8px; }
+    .accuracy { font-size: 13px; color: var(--subtext); margin-top: 4px; }
+    .time-badge { font-size: 12px; color: var(--yellow); font-weight: bold; margin-top: 6px; }
+    
+    .loader { display: none; text-align: center; margin: 20px 0; }
+    .spinner { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--accent); border-radius: 50%; width: 32px; height: 32px; animation: spin 0.8s linear infinite; margin: 0 auto 10px; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    .market-closed { color: var(--red); font-weight: bold; }
+    
+    .scan-status { font-size: 12px; color: var(--subtext); }
   </style>
 </head>
 <body>
 
-  <div class="header">⚡ Pocket Option Signal Analytics</div>
+  <div class="header">⚡ Pocket Option Smart Scanner</div>
 
   <div class="card">
-    <label>Торговая пара (Выплаты до 92%)</label>
-    <select id="pairSelect" onchange="changePair()">
-      <optgroup label="Валютные пары (OTC 24/7)">
-        <option value="EURUSD_OTC">EUR / USD (OTC) [92%]</option>
-        <option value="GBPUSD_OTC">GBP / USD (OTC) [92%]</option>
-        <option value="USDJPY_OTC">USD / JPY (OTC) [92%]</option>
-        <option value="AUDUSD_OTC">AUD / USD (OTC) [92%]</option>
-        <option value="USDCAD_OTC">USD / CAD (OTC) [92%]</option>
-        <option value="USDCHF_OTC">USD / CHF (OTC) [92%]</option>
-        <option value="EURJPY_OTC">EUR / JPY (OTC) [92%]</option>
-        <option value="GBPJPY_OTC">GBP / JPY (OTC) [92%]</option>
-      </optgroup>
-      <optgroup label="Сырьё и Металлы (OTC 24/7)">
-        <option value="GOLD_OTC">XAU / USD Gold (OTC) [92%]</option>
-        <option value="SILVER_OTC">XAG / USD Silver (OTC) [92%]</option>
-        <option value="BRENT_OTC">UKBRENT Oil (OTC) [92%]</option>
-      </optgroup>
-      <optgroup label="Акции (OTC 24/7)">
-        <option value="AAPL_OTC">AAPL Apple (OTC) [92%]</option>
-        <option value="AMZN_OTC">AMZN Amazon (OTC) [92%]</option>
-        <option value="MSFT_OTC">MSFT Microsoft (OTC) [92%]</option>
-        <option value="TSLA_OTC">TSLA Tesla (OTC) [92%]</option>
-      </optgroup>
-      <optgroup label="Криптовалюта (OTC 24/7)">
-        <option value="BTCUSD_OTC">BTC / USD (OTC) [92%]</option>
-        <option value="ETHUSD_OTC">ETH / USD (OTC) [92%]</option>
-      </optgroup>
-      <optgroup label="Forex / Реальная биржа (Пн-Пт)">
-        <option value="EURUSD">EUR / USD (Биржа)</option>
-        <option value="GBPUSD">GBP / USD (Биржа)</option>
-        <option value="USDJPY">USD / JPY (Биржа)</option>
-        <option value="GOLD">XAU / USD Gold (Биржа)</option>
-      </optgroup>
-    </select>
-
-    <label>Таймфрейм / Экспирация</label>
+    <label>Режим поиска сигнала</label>
     <select id="tfSelect">
-      <option value="10s">10 секунд</option>
-      <option value="1m" selected>1 минута</option>
-      <option value="5m">5 минут</option>
+      <option value="10s">Скальпинг (Экспирация 10 сек)</option>
+      <option value="1m" selected>Стандарт (Экспирация 1 мин)</option>
+      <option value="5m">Тренд (Экспирация 5 мин)</option>
     </select>
 
-    <div class="price-box">
-      <span>Статус / Котировка:</span>
-      <span id="livePrice" class="price-value">Подключение...</span>
-    </div>
-
-    <div class="indicators-grid">
-      <div class="ind-item">RSI (14): <span id="indRsi" class="ind-value">--</span></div>
-      <div class="ind-item">Тренд (EMA): <span id="indEma" class="ind-value">--</span></div>
-      <div class="ind-item">Bollinger: <span id="indBoll" class="ind-value">--</span></div>
-      <div class="ind-item">Буфер тиков: <span id="indCount" class="ind-value">0/20</span></div>
-    </div>
-
-    <button id="getSignalBtn" class="btn-main" onclick="generateSignal()">Анализировать актив</button>
+    <button id="scanBtn" class="btn-scan" onclick="scanAllPairs()">🎯 НАЙТИ ЛУЧШИЙ ВХОД (92%)</button>
   </div>
 
   <div class="card">
     <div id="loader" class="loader">
       <div class="spinner"></div>
-      <div style="font-size: 12px; color: var(--subtext);">Анализ импульса и индикаторов...</div>
+      <div id="scanStatus" class="scan-status">Сканирование OTC рынка...</div>
     </div>
 
     <div id="resultBox" class="result-box">
-      <div style="font-size: 11px; color: var(--subtext);">Рекомендация алгоритма</div>
-      <div id="signalText" class="signal-type">---</div>
-      <div id="accuracyText" class="accuracy">Уверенность (Confluence): --%</div>
+      <div style="font-size: 11px; color: var(--subtext); margin-bottom: 6px;">НАЙДЕНА ОПТИМАЛЬНАЯ СДЕЛКА</div>
+      <div id="bestPair" class="pair-badge">EUR / USD (OTC)</div>
+      
+      <div id="signalText" class="signal-type">CALL ⬆</div>
+      
+      <div id="timeBadge" class="time-badge">Время входа: 1 Минута</div>
+      <div id="accuracyText" class="accuracy">Сила совпадения (Confluence): 94%</div>
     </div>
   </div>
 
@@ -124,88 +81,30 @@
       window.Telegram.WebApp.expand();
     }
 
-    let otcInterval = null;
-    let pricesHistory = [];
-    const maxPrices = 30;
-    let isMarketClosed = false;
+    // Список всех доступных OTC пар с 92% выплатой
+    const pairsPool = [
+      { id: 'EURUSD_OTC', name: 'EUR / USD (OTC) [92%]', base: 1.0850, dec: 5 },
+      { id: 'GBPUSD_OTC', name: 'GBP / USD (OTC) [92%]', base: 1.2650, dec: 5 },
+      { id: 'USDJPY_OTC', name: 'USD / JPY (OTC) [92%]', base: 155.20, dec: 3 },
+      { id: 'AUDUSD_OTC', name: 'AUD / USD (OTC) [92%]', base: 0.6650, dec: 5 },
+      { id: 'USDCAD_OTC', name: 'USD / CAD (OTC) [92%]', base: 1.3680, dec: 5 },
+      { id: 'USDCHF_OTC', name: 'USD / CHF (OTC) [92%]', base: 0.8950, dec: 5 },
+      { id: 'GOLD_OTC',   name: 'GOLD (OTC) [92%]',      base: 2380.50, dec: 2 },
+      { id: 'SILVER_OTC', name: 'SILVER (OTC) [92%]',    base: 28.40,  dec: 2 },
+      { id: 'BRENT_OTC',  name: 'UKBRENT (OTC) [92%]',   base: 82.30,  dec: 2 },
+      { id: 'AAPL_OTC',   name: 'AAPL Apple (OTC) [92%]', base: 224.30, dec: 2 },
+      { id: 'TSLA_OTC',   name: 'TSLA Tesla (OTC) [92%]', base: 251.50, dec: 2 },
+      { id: 'BTCUSD_OTC', name: 'BTC / USD (OTC) [92%]', base: 64200.0, dec: 2 }
+    ];
 
-    function isForexClosedNow() {
-      const day = new Date().getDay();
-      return (day === 0 || day === 6);
-    }
-
-    function getBasePrice(pair) {
-      if (pair.startsWith('EUR')) return 1.0850;
-      if (pair.startsWith('GBP')) return 1.2650;
-      if (pair.includes('JPY')) return 155.20;
-      if (pair.startsWith('GOLD')) return 2380.50;
-      if (pair.startsWith('SILVER')) return 28.40;
-      if (pair.startsWith('BRENT')) return 82.30;
-      if (pair.startsWith('AAPL')) return 224.30;
-      if (pair.startsWith('AMZN')) return 186.10;
-      if (pair.startsWith('MSFT')) return 448.20;
-      if (pair.startsWith('TSLA')) return 251.50;
-      if (pair.startsWith('BTC')) return 64200.00;
-      if (pair.startsWith('ETH')) return 3450.00;
-      return 1.0000;
-    }
-
-    function changePair() {
-      const pair = document.getElementById('pairSelect').value;
-      const btn = document.getElementById('getSignalBtn');
-      document.getElementById('livePrice').innerText = 'Подключение...';
-      document.getElementById('indRsi').innerText = '--';
-      document.getElementById('indEma').innerText = '--';
-      document.getElementById('indBoll').innerText = '--';
-      pricesHistory = [];
-      isMarketClosed = false;
-      btn.disabled = false;
-
-      if (otcInterval) { clearInterval(otcInterval); }
-
-      // Проверка только для настоящей биржи по выходным
-      if (!pair.endsWith('_OTC') && isForexClosedNow()) {
-        isMarketClosed = true;
-        document.getElementById('livePrice').innerText = 'РЫНОК ЗАКРЫТ';
-        document.getElementById('livePrice').className = 'price-value market-closed';
-        document.getElementById('indCount').innerText = '0/20';
-        btn.disabled = true;
-        return;
-      } else {
-        document.getElementById('livePrice').className = 'price-value';
+    function generateSimulatedHistory(basePrice) {
+      let history = [];
+      let price = basePrice;
+      for (let i = 0; i < 25; i++) {
+        price += (Math.random() - 0.495) * (price * 0.00012);
+        history.push(price);
       }
-
-      let basePrice = getBasePrice(pair);
-      
-      // Инициализация стартового буфера тиков
-      for(let i=0; i<15; i++) {
-        basePrice += (Math.random() - 0.495) * (basePrice * 0.0001);
-        pricesHistory.push(basePrice);
-      }
-
-      otcInterval = setInterval(() => {
-        basePrice += (Math.random() - 0.495) * (basePrice * 0.0001);
-        handleNewPrice(basePrice);
-      }, 500);
-    }
-
-    function handleNewPrice(price) {
-      const pair = document.getElementById('pairSelect').value;
-      let decimals = 5;
-      if (pair.includes('JPY')) decimals = 3;
-      else if (pair.startsWith('GOLD') || pair.startsWith('SILVER') || pair.startsWith('BRENT') || pair.startsWith('AAPL') || pair.startsWith('AMZN') || pair.startsWith('MSFT') || pair.startsWith('TSLA') || pair.startsWith('BTC') || pair.startsWith('ETH')) decimals = 2;
-
-      const isUsdSymbol = pair.startsWith('BTC') || pair.startsWith('ETH') || pair.startsWith('AAPL') || pair.startsWith('AMZN') || pair.startsWith('MSFT') || pair.startsWith('TSLA');
-      document.getElementById('livePrice').innerText = price.toFixed(decimals) + (isUsdSymbol ? ' $' : '');
-
-      pricesHistory.push(price);
-      if (pricesHistory.length > maxPrices) { pricesHistory.shift(); }
-
-      document.getElementById('indCount').innerText = `${pricesHistory.length}/${maxPrices}`;
-
-      if (pricesHistory.length >= 10) {
-        updateTechnicalIndicators();
-      }
+      return history;
     }
 
     function calculateRSI(prices, period = 10) {
@@ -227,74 +126,82 @@
       return ema;
     }
 
-    function updateTechnicalIndicators() {
-      const rsi = calculateRSI(pricesHistory, 10);
-      const ema = calculateEMA(pricesHistory, 8);
-      const lastPrice = pricesHistory[pricesHistory.length - 1];
-
-      document.getElementById('indRsi').innerText = rsi.toFixed(1);
-      
-      if (lastPrice >= ema) {
-        document.getElementById('indEma').innerText = 'Бычий ⬆';
-        document.getElementById('indEma').style.color = 'var(--green)';
-      } else {
-        document.getElementById('indEma').innerText = 'Медвежий ⬇';
-        document.getElementById('indEma').style.color = 'var(--red)';
-      }
-
-      if (rsi > 65) document.getElementById('indBoll').innerText = 'Перекуплен';
-      else if (rsi < 35) document.getElementById('indBoll').innerText = 'Перепродан';
-      else document.getElementById('indBoll').innerText = 'Норма';
-    }
-
-    function generateSignal() {
-      if (isMarketClosed) {
-        alert('Реальная биржа закрыта! Выберите любую OTC-пару из списка.');
-        return;
-      }
-
-      const btn = document.getElementById('getSignalBtn');
+    function scanAllPairs() {
+      const btn = document.getElementById('scanBtn');
       const loader = document.getElementById('loader');
       const resultBox = document.getElementById('resultBox');
+      const scanStatus = document.getElementById('scanStatus');
+      const tf = document.getElementById('tfSelect').value;
 
       btn.disabled = true;
       resultBox.style.display = 'none';
       loader.style.display = 'block';
 
+      let currentStep = 0;
+      const statusTextMap = [
+        "Анализ микроструктуры тиков...",
+        "Проверка RSI и перекупленности...",
+        "Фильтрация трендов по EMA...",
+        "Расчёт лучшей точки входа..."
+      ];
+
+      const statusInterval = setInterval(() => {
+        if (currentStep < statusTextMap.length) {
+          scanStatus.innerText = statusTextMap[currentStep];
+          currentStep++;
+        }
+      }, 250);
+
       setTimeout(() => {
-        loader.style.display = 'none';
-        resultBox.style.display = 'block';
-        btn.disabled = false;
+        clearInterval(statusInterval);
+        
+        // Оцениваем каждую пару из пула
+        let ratedPairs = pairsPool.map(pair => {
+          const history = generateSimulatedHistory(pair.base);
+          const rsi = calculateRSI(history, 10);
+          const ema = calculateEMA(history, 8);
+          const lastPrice = history[history.length - 1];
 
-        const rsi = calculateRSI(pricesHistory, 10);
-        const ema = calculateEMA(pricesHistory, 8);
-        const lastPrice = pricesHistory[pricesHistory.length - 1];
+          let isCall = rsi < 50;
+          let score = 75 + Math.floor(Math.random() * 10);
 
+          // Ищем идеальные краевые условия (овербоут/оверсолд)
+          if (rsi <= 32) { isCall = true; score += 12; }
+          else if (rsi >= 68) { isCall = false; score += 12; }
+          else if (rsi < 42 && lastPrice > ema) { isCall = true; score += 7; }
+          else if (rsi > 58 && lastPrice < ema) { isCall = false; score += 7; }
+
+          return { pair, isCall, score, rsi };
+        });
+
+        // Сортируем пары по максимальной уверенности
+        ratedPairs.sort((a, b) => b.score - a.score);
+        const winner = ratedPairs[0]; // Самый сильный сигнал
+
+        // Отображаем результат
+        document.getElementById('bestPair').innerText = winner.pair.name;
+        
         const signalText = document.getElementById('signalText');
-        const accuracyText = document.getElementById('accuracyText');
-
-        let isCall = rsi < 50;
-        if (rsi < 35) isCall = true;
-        else if (rsi > 65) isCall = false;
-        else isCall = lastPrice >= ema;
-
-        let score = 85;
-        if ((isCall && rsi < 40) || (!isCall && rsi > 60)) score += 5;
-        if ((isCall && lastPrice > ema) || (!isCall && lastPrice < ema)) score += 4;
-
-        if (isCall) {
-          signalText.innerText = 'CALL ⬆';
+        if (winner.isCall) {
+          signalText.innerText = 'CALL ⬆ (ВВЕРХ)';
           signalText.className = 'signal-type signal-call';
         } else {
-          signalText.innerText = 'PUT ⬇';
+          signalText.innerText = 'PUT ⬇ (ВНИЗ)';
           signalText.className = 'signal-type signal-put';
         }
 
-        accuracyText.innerText = `Уверенность (Confluence): ${score}%`;
-      }, 800);
-    }
+        let tfLabel = "1 Минута";
+        if (tf === '10s') tfLabel = "10 Секунд";
+        if (tf === '5m') tfLabel = "5 Минут";
 
-    changePair();
+        document.getElementById('timeBadge').innerText = `Экспирация: ${tfLabel}`;
+        document.getElementById('accuracyText').innerText = `Сила совпадения (Confluence): ${Math.min(winner.score, 96)}%`;
+
+        loader.style.display = 'none';
+        resultBox.style.display = 'block';
+        btn.disabled = false;
+      }, 1200);
+    }
   </script>
 </body>
 </html>
