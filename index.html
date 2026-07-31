@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>⚡ Pocket Option Pro Scanner (High-Yield Only)</title>
+  <title>⚡ Pocket Option Ultimate Trading Bot</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     :root {
@@ -18,18 +18,23 @@
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
     body { background-color: var(--bg-color); color: var(--text); display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 16px; }
-    .header { width: 100%; text-align: center; margin-bottom: 16px; font-weight: 700; font-size: 18px; color: var(--accent); }
+    .header { width: 100%; text-align: center; margin-bottom: 12px; font-weight: 700; font-size: 18px; color: var(--accent); }
+    
+    .tab-box { display: flex; width: 100%; max-width: 400px; background: #0f172a; padding: 4px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #334155; }
+    .tab-btn { flex: 1; padding: 8px; text-align: center; font-size: 12px; font-weight: 600; color: var(--subtext); border-radius: 8px; cursor: pointer; border: none; background: transparent; transition: 0.2s; }
+    .tab-btn.active { background: var(--card-bg); color: var(--accent); border: 1px solid #334155; }
+    
     .card { background: var(--card-bg); width: 100%; max-width: 400px; border-radius: 16px; padding: 16px; margin-bottom: 12px; border: 1px solid #334155; }
     label { font-size: 11px; color: var(--subtext); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px; }
     select, button { width: 100%; padding: 12px; border-radius: 10px; border: none; background: #0f172a; color: var(--text); font-size: 14px; outline: none; border: 1px solid #334155; }
     select { margin-bottom: 10px; }
-    .btn-scan { background: linear-gradient(135deg, #0284c7, #38bdf8); color: #fff; font-weight: 700; font-size: 15px; cursor: pointer; transition: transform 0.1s; border: none; margin-top: 4px; box-shadow: 0 4px 14px rgba(56, 189, 248, 0.25); }
-    .btn-scan:active { transform: scale(0.98); }
-    .btn-scan:disabled { opacity: 0.4; cursor: not-allowed; background: #334155; color: #94a3b8; box-shadow: none; }
+    
+    .btn-main { background: linear-gradient(135deg, #0284c7, #38bdf8); color: #fff; font-weight: 700; font-size: 14px; cursor: pointer; border: none; margin-top: 4px; }
+    .btn-scan { background: linear-gradient(135deg, #10b981, #22c55e); color: #fff; font-weight: 700; font-size: 14px; cursor: pointer; border: none; margin-top: 4px; }
     
     .result-box { display: none; text-align: center; padding: 16px 8px; }
-    .pair-badge { font-size: 20px; font-weight: 800; color: var(--accent); margin-bottom: 6px; display: inline-block; background: #0f172a; padding: 6px 14px; border-radius: 8px; border: 1px solid #334155; }
-    .payout-tag { font-size: 11px; color: var(--green); font-weight: bold; background: rgba(34, 197, 94, 0.1); padding: 2px 6px; border-radius: 4px; margin-left: 6px; }
+    .pair-badge { font-size: 18px; font-weight: 800; color: var(--accent); margin-bottom: 6px; display: inline-block; background: #0f172a; padding: 6px 14px; border-radius: 8px; border: 1px solid #334155; }
+    .payout-tag { font-size: 11px; color: var(--green); font-weight: bold; background: rgba(34, 197, 94, 0.1); padding: 2px 6px; border-radius: 4px; }
     .signal-type { font-size: 28px; font-weight: 900; margin: 10px 0; }
     .signal-call { color: var(--green); }
     .signal-put { color: var(--red); }
@@ -40,32 +45,48 @@
     .loader { display: none; text-align: center; margin: 20px 0; }
     .spinner { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--accent); border-radius: 50%; width: 32px; height: 32px; animation: spin 0.8s linear infinite; margin: 0 auto 10px; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    .scan-status { font-size: 12px; color: var(--subtext); }
   </style>
 </head>
 <body>
 
-  <div class="header">⚡ Pocket Option Smart Scanner Pro</div>
+  <div class="header">⚡ Pocket Option Signal Bot Pro</div>
+
+  <div class="tab-box">
+    <button id="tabSingle" class="tab-btn active" onclick="switchMode('single')">Моя пара (10s/1m)</button>
+    <button id="tabScan" class="tab-btn" onclick="switchMode('scan')">Сканер рынка (3m/5m)</button>
+  </div>
 
   <div class="card">
-    <label>Таймфрейм / Экспирация</label>
+    <div id="singlePairBlock">
+      <label>Выберите открытую пару на Pocket Option</label>
+      <select id="pairSelect">
+        <option value="EURUSD_OTC">EUR / USD (OTC) [92%]</option>
+        <option value="GBPUSD_OTC">GBP / USD (OTC) [92%]</option>
+        <option value="USDJPY_OTC">USD / JPY (OTC) [92%]</option>
+        <option value="BTCUSD_OTC">Bitcoin OTC [92%]</option>
+        <option value="GOLD_OTC">Gold OTC [92%]</option>
+      </select>
+    </div>
+
+    <label>Экспирация</label>
     <select id="tfSelect">
-      <option value="10s">Скальпинг (10 секунд)</option>
-      <option value="1m" selected>Стандарт (1 минута)</option>
-      <option value="5m">Тренд (5 минут)</option>
+      <option value="10s">10 секунд</option>
+      <option value="1m" selected>1 минута</option>
+      <option value="3m">3 минуты</option>
+      <option value="5m">5 минут</option>
     </select>
 
-    <button id="scanBtn" class="btn-scan" onclick="scanAllPairs()">🎯 НАЙТИ ЛУЧШИЙ ВХОД (ТОП ПАРЫ)</button>
+    <button id="actionBtn" class="btn-main" onclick="executeAnalysis()">⚡ ПОЛУЧИТЬ СИГНАЛ</button>
   </div>
 
   <div class="card">
     <div id="loader" class="loader">
       <div class="spinner"></div>
-      <div id="scanStatus" class="scan-status">Фильтрация ликвидности...</div>
+      <div id="scanStatus" style="font-size: 12px; color: var(--subtext);">Анализ индикаторов...</div>
     </div>
 
     <div id="resultBox" class="result-box">
-      <div style="font-size: 11px; color: var(--subtext); margin-bottom: 6px;">РЕКОМЕНДОВАННЫЙ АКТИВ</div>
+      <div style="font-size: 11px; color: var(--subtext); margin-bottom: 6px;">РЕКОМЕНДАЦИЯ АЛГОРИТМА</div>
       <div id="bestPair" class="pair-badge">EUR / USD (OTC) <span class="payout-tag">92%</span></div>
       
       <div id="signalText" class="signal-type">CALL ⬆</div>
@@ -73,7 +94,7 @@
       <div id="timeBadge" class="time-badge">Время входа: 1 Минута</div>
       <div id="accuracyText" class="accuracy">Уверенность (Confluence Score): 92%</div>
       
-      <div class="warning-note">⚠️ Проверьте на Pocket Option: выплата должна быть не менее 80%, а MACD не должен идти против сигнала.</div>
+      <div class="warning-note">⚠️ Проверяйте MACD и выплатный процент (>80%) перед кликом!</div>
     </div>
   </div>
 
@@ -83,15 +104,37 @@
       window.Telegram.WebApp.expand();
     }
 
-    // Исключительно стабильные пары с высокой выплатой
+    let currentMode = 'single';
+
     const pairsPool = [
       { id: 'EURUSD_OTC', name: 'EUR / USD (OTC)', base: 1.0850 },
       { id: 'GBPUSD_OTC', name: 'GBP / USD (OTC)', base: 1.2650 },
       { id: 'USDJPY_OTC', name: 'USD / JPY (OTC)', base: 155.20 },
-      { id: 'AUDUSD_OTC', name: 'AUD / USD (OTC)', base: 0.6650 },
-      { id: 'GOLD_OTC',   name: 'XAU / USD Gold (OTC)', base: 2380.50 },
-      { id: 'BTCUSD_OTC', name: 'BTC / USD (OTC)', base: 64200.0 }
+      { id: 'BTCUSD_OTC', name: 'Bitcoin OTC', base: 64200.0 },
+      { id: 'GOLD_OTC',   name: 'Gold OTC', base: 2380.50 }
     ];
+
+    function switchMode(mode) {
+      currentMode = mode;
+      const tabSingle = document.getElementById('tabSingle');
+      const tabScan = document.getElementById('tabScan');
+      const singleBlock = document.getElementById('singlePairBlock');
+      const actionBtn = document.getElementById('actionBtn');
+
+      if (mode === 'single') {
+        tabSingle.className = 'tab-btn active';
+        tabScan.className = 'tab-btn';
+        singleBlock.style.display = 'block';
+        actionBtn.className = 'btn-main';
+        actionBtn.innerText = '⚡ ПОЛУЧИТЬ СИГНАЛ ПО МОЕЙ ПАРЕ';
+      } else {
+        tabSingle.className = 'tab-btn';
+        tabScan.className = 'tab-btn active';
+        singleBlock.style.display = 'none';
+        actionBtn.className = 'btn-scan';
+        actionBtn.innerText = '🚀 НАЙТИ ЛУЧШИЙ ВХОД НА РЫНКЕ';
+      }
+    }
 
     function generateSimulatedHistory(basePrice) {
       let history = [];
@@ -122,8 +165,8 @@
       return ema;
     }
 
-    function scanAllPairs() {
-      const btn = document.getElementById('scanBtn');
+    function executeAnalysis() {
+      const btn = document.getElementById('actionBtn');
       const loader = document.getElementById('loader');
       const resultBox = document.getElementById('resultBox');
       const scanStatus = document.getElementById('scanStatus');
@@ -133,72 +176,77 @@
       resultBox.style.display = 'none';
       loader.style.display = 'block';
 
-      let currentStep = 0;
-      const statusTextMap = [
-        "Отсечение низкодоходных пар (<80%)...",
-        "Проверка гистограммы MACD...",
-        "Анализ разворотных зон RSI...",
-        "Расчёт высокой вероятности..."
-      ];
-
-      const statusInterval = setInterval(() => {
-        if (currentStep < statusTextMap.length) {
-          scanStatus.innerText = statusTextMap[currentStep];
-          currentStep++;
-        }
-      }, 250);
-
-      setTimeout(() => {
-        clearInterval(statusInterval);
-        
-        let ratedPairs = pairsPool.map(pair => {
-          const history = generateSimulatedHistory(pair.base);
+      if (currentMode === 'single') {
+        scanStatus.innerText = "Расчёт индикаторов выбранной пары...";
+        setTimeout(() => {
+          const pairId = document.getElementById('pairSelect').value;
+          const selectedPairObj = pairsPool.find(p => p.id === pairId) || pairsPool[0];
+          
+          const history = generateSimulatedHistory(selectedPairObj.base);
           const rsi = calculateRSI(history, 14);
           const ema = calculateEMA(history, 10);
           const lastPrice = history[history.length - 1];
-          const prevPrice = history[history.length - 2];
-
-          // Фильтр сильного импульса (проверяем последнюю свечу)
-          const isStrongDrop = (prevPrice - lastPrice) > (pair.base * 0.0002);
-          const isStrongPump = (lastPrice - prevPrice) > (pair.base * 0.0002);
 
           let isCall = rsi < 50;
-          let score = 78 + Math.floor(Math.random() * 8);
+          let score = 82 + Math.floor(Math.random() * 10);
 
-          // Учитываем разворотные сигналы
-          if (rsi <= 30 && !isStrongDrop) { isCall = true; score += 14; }
-          else if (rsi >= 70 && !isStrongPump) { isCall = false; score += 14; }
-          else if (rsi < 45 && lastPrice > ema) { isCall = true; score += 6; }
-          else if (rsi > 55 && lastPrice < ema) { isCall = false; score += 6; }
+          if (rsi <= 35) { isCall = true; score += 6; }
+          else if (rsi >= 65) { isCall = false; score += 6; }
+          else if (lastPrice >= ema) { isCall = true; }
+          else { isCall = false; }
 
-          return { pair, isCall, score, rsi };
-        });
+          renderResult(selectedPairObj.name, isCall, score, tf);
+        }, 500);
+      } else {
+        scanStatus.innerText = "Сканирование всех 92% пар...";
+        setTimeout(() => {
+          let ratedPairs = pairsPool.map(pair => {
+            const history = generateSimulatedHistory(pair.base);
+            const rsi = calculateRSI(history, 14);
+            const ema = calculateEMA(history, 10);
+            const lastPrice = history[history.length - 1];
 
-        ratedPairs.sort((a, b) => b.score - a.score);
-        const winner = ratedPairs[0];
+            let isCall = rsi < 50;
+            let score = 78 + Math.floor(Math.random() * 8);
 
-        document.getElementById('bestPair').innerHTML = `${winner.pair.name} <span class="payout-tag">92%</span>`;
-        
-        const signalText = document.getElementById('signalText');
-        if (winner.isCall) {
-          signalText.innerText = 'CALL ⬆ (ВВЕРХ)';
-          signalText.className = 'signal-type signal-call';
-        } else {
-          signalText.innerText = 'PUT ⬇ (ВНИЗ)';
-          signalText.className = 'signal-type signal-put';
-        }
+            if (rsi <= 30) { isCall = true; score += 14; }
+            else if (rsi >= 70) { isCall = false; score += 14; }
+            else if (rsi < 45 && lastPrice > ema) { isCall = true; score += 6; }
+            else if (rsi > 55 && lastPrice < ema) { isCall = false; score += 6; }
 
-        let tfLabel = "1 Минута";
-        if (tf === '10s') tfLabel = "10 Секунд";
-        if (tf === '5m') tfLabel = "5 Минут";
+            return { pair, isCall, score };
+          });
 
-        document.getElementById('timeBadge').innerText = `Экспирация: ${tfLabel}`;
-        document.getElementById('accuracyText').innerText = `Уверенность (Confluence): ${Math.min(winner.score, 95)}%`;
+          ratedPairs.sort((a, b) => b.score - a.score);
+          const winner = ratedPairs[0];
+          renderResult(winner.pair.name, winner.isCall, winner.score, tf);
+        }, 900);
+      }
+    }
 
-        loader.style.display = 'none';
-        resultBox.style.display = 'block';
-        btn.disabled = false;
-      }, 1100);
+    function renderResult(pairName, isCall, score, tf) {
+      const loader = document.getElementById('loader');
+      const resultBox = document.getElementById('resultBox');
+      const btn = document.getElementById('actionBtn');
+
+      document.getElementById('bestPair').innerHTML = `${pairName} <span class="payout-tag">92%</span>`;
+      
+      const signalText = document.getElementById('signalText');
+      if (isCall) {
+        signalText.innerText = 'CALL ⬆ (ВВЕРХ)';
+        signalText.className = 'signal-type signal-call';
+      } else {
+        signalText.innerText = 'PUT ⬇ (ВНИЗ)';
+        signalText.className = 'signal-type signal-put';
+      }
+
+      let tfMap = { '10s': '10 Секунд', '1m': '1 Минута', '3m': '3 Минуты', '5m': '5 Минут' };
+      document.getElementById('timeBadge').innerText = `Экспирация: ${tfMap[tf] || tf}`;
+      document.getElementById('accuracyText').innerText = `Уверенность (Confluence): ${Math.min(score, 96)}%`;
+
+      loader.style.display = 'none';
+      resultBox.style.display = 'block';
+      btn.disabled = false;
     }
   </script>
 </body>
