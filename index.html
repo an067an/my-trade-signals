@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>⚡ Бот</title>
+  <title>⚡ Бот — Multi-Indicator Pro</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     :root {
@@ -12,38 +12,42 @@
       --accent: #38bdf8;
       --green: #22c55e;
       --red: #ef4444;
+      --yellow: #eab308;
       --text: #f8fafc;
       --subtext: #94a3b8;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
     body { background-color: var(--bg-color); color: var(--text); display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 16px; }
-    .header { width: 100%; text-align: center; margin-bottom: 20px; font-weight: 700; font-size: 20px; color: var(--accent); }
-    .card { background: var(--card-bg); width: 100%; max-width: 400px; border-radius: 16px; padding: 16px; margin-bottom: 16px; border: 1px solid #334155; }
-    label { font-size: 12px; color: var(--subtext); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 8px; }
-    select, button { width: 100%; padding: 12px; border-radius: 10px; border: none; background: #0f172a; color: var(--text); font-size: 15px; outline: none; border: 1px solid #334155; }
-    select { margin-bottom: 12px; }
+    .header { width: 100%; text-align: center; margin-bottom: 16px; font-weight: 700; font-size: 18px; color: var(--accent); }
+    .card { background: var(--card-bg); width: 100%; max-width: 400px; border-radius: 16px; padding: 16px; margin-bottom: 12px; border: 1px solid #334155; }
+    label { font-size: 11px; color: var(--subtext); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px; }
+    select, button { width: 100%; padding: 12px; border-radius: 10px; border: none; background: #0f172a; color: var(--text); font-size: 14px; outline: none; border: 1px solid #334155; }
+    select { margin-bottom: 10px; }
     .btn-main { background: linear-gradient(135deg, #0284c7, #38bdf8); color: #fff; font-weight: 600; cursor: pointer; transition: transform 0.1s, opacity 0.2s; border: none; margin-top: 8px; }
     .btn-main:active { transform: scale(0.98); }
     .btn-main:disabled { opacity: 0.5; cursor: not-allowed; }
-    .price-box { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 14px; }
+    .price-box { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; font-size: 13px; }
     .price-value { font-weight: bold; font-family: monospace; }
-    .result-box { display: none; text-align: center; padding: 20px 10px; }
-    .signal-type { font-size: 28px; font-weight: 900; margin: 10px 0; }
+    .indicators-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; font-size: 11px; background: #0f172a; padding: 10px; border-radius: 8px; }
+    .ind-item { color: var(--subtext); }
+    .ind-value { color: var(--text); font-weight: bold; float: right; }
+    .result-box { display: none; text-align: center; padding: 16px 8px; }
+    .signal-type { font-size: 26px; font-weight: 900; margin: 8px 0; }
     .signal-call { color: var(--green); }
     .signal-put { color: var(--red); }
-    .accuracy { font-size: 14px; color: var(--subtext); }
+    .signal-wait { color: var(--yellow); }
+    .accuracy { font-size: 13px; color: var(--subtext); }
     .loader { display: none; text-align: center; margin: 15px 0; }
-    .spinner { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--accent); border-radius: 50%; width: 30px; height: 30px; animation: spin 0.8s linear infinite; margin: 0 auto 10px; }
+    .spinner { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--accent); border-radius: 50%; width: 28px; height: 28px; animation: spin 0.8s linear infinite; margin: 0 auto 8px; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    .rsi-info { font-size: 12px; color: var(--subtext); margin-top: 6px; }
   </style>
 </head>
 <body>
 
-  <div class="header">⚡ Бот — RSI Live Analytics</div>
+  <div class="header">⚡ Smart Signal Analytics (Pro)</div>
 
   <div class="card">
-    <label>Валютная пара</label>
+    <label>Торговая пара</label>
     <select id="pairSelect" onchange="changePair()">
       <option value="btcusdt">BTC / USDT</option>
       <option value="ethusdt">ETH / USDT</option>
@@ -60,24 +64,30 @@
     </select>
 
     <div class="price-box">
-      <span>Текущая цена Binance:</span>
+      <span>Цена Binance:</span>
       <span id="livePrice" class="price-value">Подключение...</span>
     </div>
-    <div class="rsi-info">Текущий RSI (14): <span id="liveRsi" style="font-weight:bold; color:var(--accent);">--</span></div>
 
-    <button id="getSignalBtn" class="btn-main" onclick="generateSignal()">Анализировать рынок</button>
+    <div class="indicators-grid">
+      <div class="ind-item">RSI (14): <span id="indRsi" class="ind-value">--</span></div>
+      <div class="ind-item">Тренд (EMA): <span id="indEma" class="ind-value">--</span></div>
+      <div class="ind-item">Bollinger: <span id="indBoll" class="ind-value">--</span></div>
+      <div class="ind-item">Память тиков: <span id="indCount" class="ind-value">0/50</span></div>
+    </div>
+
+    <button id="getSignalBtn" class="btn-main" onclick="generateSignal()">Анализировать фильтры</button>
   </div>
 
   <div class="card">
     <div id="loader" class="loader">
       <div class="spinner"></div>
-      <div style="font-size: 13px; color: var(--subtext);">Считывание тиков и расчёт RSI...</div>
+      <div style="font-size: 12px; color: var(--subtext);">Сверка RSI + EMA + Bollinger...</div>
     </div>
 
     <div id="resultBox" class="result-box">
-      <div style="font-size: 12px; color: var(--subtext);">Анализ завершён</div>
+      <div style="font-size: 11px; color: var(--subtext);">Результат анализа</div>
       <div id="signalText" class="signal-type">---</div>
-      <div id="accuracyText" class="accuracy">Точность расчёта: --%</div>
+      <div id="accuracyText" class="accuracy">Уверенность входа: --%</div>
     </div>
   </div>
 
@@ -89,17 +99,18 @@
 
     let ws = null;
     let pricesHistory = [];
-    const maxPrices = 50; // Для расчёта RSI
+    const maxPrices = 50;
 
     function changePair() {
       const pair = document.getElementById('pairSelect').value;
       document.getElementById('livePrice').innerText = 'Подключение...';
-      document.getElementById('liveRsi').innerText = '--';
+      document.getElementById('indRsi').innerText = '--';
+      document.getElementById('indEma').innerText = '--';
+      document.getElementById('indBoll').innerText = '--';
       pricesHistory = [];
 
       if (ws) { ws.close(); }
 
-      // WebSocket к бирже Binance
       ws = new WebSocket(`wss://stream.binance.com:9443/ws/${pair}@trade`);
 
       ws.onmessage = (event) => {
@@ -108,41 +119,79 @@
         document.getElementById('livePrice').innerText = price.toFixed(2) + ' $';
 
         pricesHistory.push(price);
-        if (pricesHistory.length > maxPrices) {
-          pricesHistory.shift();
-        }
+        if (pricesHistory.length > maxPrices) { pricesHistory.shift(); }
 
-        if (pricesHistory.length >= 15) {
-          const rsi = calculateRSI(pricesHistory, 14);
-          document.getElementById('liveRsi').innerText = rsi.toFixed(1);
+        document.getElementById('indCount').innerText = `${pricesHistory.length}/${maxPrices}`;
+
+        if (pricesHistory.length >= 20) {
+          updateTechnicalIndicators();
         }
       };
     }
 
     function calculateRSI(prices, period = 14) {
-      let gains = 0;
-      let losses = 0;
-
+      let gains = 0, losses = 0;
       for (let i = prices.length - period; i < prices.length; i++) {
-        const difference = prices[i] - prices[i - 1];
-        if (difference >= 0) {
-          gains += difference;
-        } else {
-          losses -= difference;
-        }
+        const diff = prices[i] - prices[i - 1];
+        if (diff >= 0) gains += diff; else losses -= diff;
       }
-
       const avgGain = gains / period;
       const avgLoss = losses / period;
-
       if (avgLoss === 0) return 100;
-      const rs = avgGain / avgLoss;
-      return 100 - (100 / (1 + rs));
+      return 100 - (100 / (1 + (avgGain / avgLoss)));
+    }
+
+    function calculateEMA(prices, period) {
+      const k = 2 / (period + 1);
+      let ema = prices[prices.length - period];
+      for (let i = prices.length - period + 1; i < prices.length; i++) {
+        ema = (prices[i] * k) + (ema * (1 - k));
+      }
+      return ema;
+    }
+
+    function calculateBollinger(prices, period = 20) {
+      const slice = prices.slice(-period);
+      const mean = slice.reduce((a, b) => a + b, 0) / period;
+      const variance = slice.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / period;
+      const stdDev = Math.sqrt(variance);
+      return {
+        upper: mean + (stdDev * 2),
+        lower: mean - (stdDev * 2),
+        middle: mean
+      };
+    }
+
+    function updateTechnicalIndicators() {
+      const rsi = calculateRSI(pricesHistory, 14);
+      const ema20 = calculateEMA(pricesHistory, 20);
+      const lastPrice = pricesHistory[pricesHistory.length - 1];
+      const boll = calculateBollinger(pricesHistory, 20);
+
+      document.getElementById('indRsi').innerText = rsi.toFixed(1);
+      
+      // EMA Trend
+      if (lastPrice > ema20) {
+        document.getElementById('indEma').innerText = 'Bulls ⬆';
+        document.getElementById('indEma').style.color = 'var(--green)';
+      } else {
+        document.getElementById('indEma').innerText = 'Bears ⬇';
+        document.getElementById('indEma').style.color = 'var(--red)';
+      }
+
+      // Bollinger State
+      if (lastPrice >= boll.upper) {
+        document.getElementById('indBoll').innerText = 'Верх. граница';
+      } else if (lastPrice <= boll.lower) {
+        document.getElementById('indBoll').innerText = 'Низ. граница';
+      } else {
+        document.getElementById('indBoll').innerText = 'В канале';
+      }
     }
 
     function generateSignal() {
-      if (pricesHistory.length < 15) {
-        alert('Подождите пару секунд, пока бот накопит живые тики цены для расчёта!');
+      if (pricesHistory.length < 25) {
+        alert('Бот еще накапливает тики (нужно хотя бы 25/50). Подождите 5 секунд!');
         return;
       }
 
@@ -159,45 +208,46 @@
         resultBox.style.display = 'block';
         btn.disabled = false;
 
-        const currentRsi = calculateRSI(pricesHistory, 14);
+        const rsi = calculateRSI(pricesHistory, 14);
+        const ema20 = calculateEMA(pricesHistory, 20);
+        const boll = calculateBollinger(pricesHistory, 20);
+        const lastPrice = pricesHistory[pricesHistory.length - 1];
+
         const signalText = document.getElementById('signalText');
         const accuracyText = document.getElementById('accuracyText');
 
-        let direction = 'CALL ⬆';
-        let isCall = true;
-        let accuracy = 82;
+        let scoreCall = 0;
+        let scorePut = 0;
 
-        if (currentRsi > 70) {
-          // Сильная перекупленность -> сигнал PUT
-          direction = 'PUT ⬇';
-          isCall = false;
-          accuracy = Math.min(96, Math.floor(88 + (currentRsi - 70) * 0.4));
-        } else if (currentRsi < 30) {
-          // Сильная перепроданность -> сигнал CALL
-          direction = 'CALL ⬆';
-          isCall = true;
-          accuracy = Math.min(96, Math.floor(88 + (30 - currentRsi) * 0.4));
+        // Фильтр 1: RSI
+        if (rsi < 35) scoreCall += 2;
+        else if (rsi > 65) scorePut += 2;
+
+        // Фильтр 2: EMA Тренд
+        if (lastPrice > ema20) scoreCall += 1;
+        else scorePut += 1;
+
+        // Фильтр 3: Полосы Боллинджера
+        if (lastPrice <= boll.lower) scoreCall += 2;
+        else if (lastPrice >= boll.upper) scorePut += 2;
+
+        // Вывод на основе суммации фильтров
+        if (scoreCall >= 3 && scoreCall > scorePut) {
+          signalText.innerText = 'CALL ⬆';
+          signalText.className = 'signal-type signal-call';
+          accuracyText.innerText = `Подтверждение индикаторов: ${Math.min(94, 75 + scoreCall * 5)}%`;
+        } else if (scorePut >= 3 && scorePut > scoreCall) {
+          signalText.innerText = 'PUT ⬇';
+          signalText.className = 'signal-type signal-put';
+          accuracyText.innerText = `Подтверждение индикаторов: ${Math.min(94, 75 + scorePut * 5)}%`;
         } else {
-          // В нейтральной зоне смотрим микротренд
-          const lastPrice = pricesHistory[pricesHistory.length - 1];
-          const prevPrice = pricesHistory[pricesHistory.length - 5] || pricesHistory[0];
-          if (lastPrice >= prevPrice) {
-            direction = 'CALL ⬆';
-            isCall = true;
-          } else {
-            direction = 'PUT ⬇';
-            isCall = false;
-          }
-          accuracy = Math.floor(78 + Math.random() * 8);
+          signalText.innerText = 'WAIT ⏳';
+          signalText.className = 'signal-type signal-wait';
+          accuracyText.innerText = 'Индикаторы противоречат друг другу. Пропустите сделку!';
         }
-
-        signalText.innerText = direction;
-        signalText.className = 'signal-type ' + (isCall ? 'signal-call' : 'signal-put');
-        accuracyText.innerText = `Точность алгоритма (RSI ${currentRsi.toFixed(1)}): ${accuracy}%`;
-      }, 1200);
+      }, 1000);
     }
 
-    // Инициализация при загрузке
     changePair();
   </script>
 </body>
